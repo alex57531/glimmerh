@@ -3,19 +3,17 @@
 # Starlight Glimmer
 A template utility bot based on [Alastair](Make-Alastair-Great-Again) and [Pinkie Pie](https://pastebin.com/Tg1p5AnW).
 
-Currently supports [Pixelcanvas.io](http://pixelcanvas.io/), [Pixelz.io](http://pixelz.io/), [Pixelzone.io](http://pixelzone.io/), and [Pxls.space](http://pxls.space/).
+Currently supports [Pixelcanvas.io](https://pixelcanvas.io/), [Pixelzone.io](https://pixelzone.io/), and [Pxls.space](https://pxls.space/).
 
 **Invite:** `https://discordapp.com/oauth2/authorize?&client_id=405480380930588682&scope=bot&permissions=109569`
 
 #### Requires:
-- [Python 3.6](https://www.python.org/downloads/release/python-365/)
-- [Discord.py rewrite](https://github.com/Rapptz/discord.py/tree/rewrite)
-- [Pillow](https://pillow.readthedocs.io/en/latest/installation.html) 5.1.0
-- [aiohttp](https://aiohttp.readthedocs.io/en/stable/) 3.2.0
-- [numpy](https://www.scipy.org/scipylib/download.html) 1.14.4
-- [websockets](https://pypi.org/project/websockets/) 4.0.1
-- [lz4](https://github.com/python-lz4/python-lz4) 1.1.0
-- [cloudflare-scrape async](https://github.com/lucasgadams/cloudflare-scrape@cf_async)
+- [Python](https://www.python.org/downloads/release/python-365/) v3.6
+- [Discord.py](https://github.com/Rapptz/discord.py/) v1.2.3
+- [Pillow](https://pillow.readthedocs.io/en/latest/installation.html) v5.1.0
+- [aiohttp](https://aiohttp.readthedocs.io/en/stable/) v3.2.0
+- [numpy](https://www.scipy.org/scipylib/download.html) v1.14.4
+- [websockets](https://pypi.org/project/websockets/) v4.0.1
 
 #### Installation:
 1. Install Python 3.6
@@ -41,9 +39,9 @@ For a more in-depth walkthrough of Glimmer's core functions, see [the wiki page]
 #### Languages:
 - English (US)
 - Portuguese (BR) - Special thanks to Ataribr / ✠ /#6703
+- Turkish (TR) (partial) - Special thanks to furkan#3251
 
 If you happen to know a language that is not listed and would be willing to translate, please translate the strings in `lang/en_US.py` and submit a pull request.
-(Currently looking for: French, Turkish)
 
 #### Help:
 If you need assistance with the bot, have a problem, or would like to recommend a feature to me directly, you can contact me [on my support server](https://discord.gg/UtyJx2x). You can also DM me if you see me around -- I am `Fawfulcopter#3432` on Discord.
