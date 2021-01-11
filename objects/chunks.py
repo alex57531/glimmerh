@@ -1,12 +1,11 @@
 import abc
 import io
-import json
+import zlib
 
-import lz4.frame
+import numpy as np
 from PIL import Image
 
 from utils import colors
-from utils.lzstring import LZString
 
 
 class Chunky(abc.ABC):
@@ -75,7 +74,7 @@ class BigChunk(Chunky):
 
     @property
     def url(self):
-        return "http://pixelcanvas.io/api/bigchunk/{0}.{1}.bmp".format(self.x * 15, self.y * 15)
+        return "https://api.pixelcanvas.io/api/bigchunk/{0}.{1}.bmp".format(self.x * 15, self.y * 15)
 
     @property
     def width(self):
@@ -110,47 +109,6 @@ class BigChunk(Chunky):
         return bigchunks, (dx - x + 1, dy - y + 1)
 
 
-class ChunkPzi(Chunky):
-    @property
-    def height(self):
-        return 500
-
-    @property
-    def p_x(self):
-        return self.x * 500
-
-    @property
-    def p_y(self):
-        return self.y * 500
-
-    @property
-    def url(self):
-        return "http://pixelz.io/api/{0}_{1}/img".format(self.p_x, self.p_y)
-
-    @property
-    def width(self):
-        return 500
-
-    def is_in_bounds(self):
-        return -1200 <= self.x < 1200 and -1200 <= self.y < 1200
-
-    def load(self, data):
-        with io.BytesIO(data) as bio:
-            self._image = Image.open(bio).convert('RGB')
-
-    @staticmethod
-    def get_intersecting(x, y, dx, dy):
-        chunks = []
-        dx = (x + dx) // 500
-        dy = (y + dy) // 500
-        x = x // 500
-        y = y // 500
-        for iy in range(y, dy + 1):
-            for ix in range(x, dx + 1):
-                chunks.append(ChunkPzi(ix, iy))
-        return chunks, (dx - x + 1, dy - y + 1)
-
-
 class ChunkPz(Chunky):
     palette = [x for sub in colors.pixelzone for x in sub] * 16
 
@@ -168,7 +126,7 @@ class ChunkPz(Chunky):
 
     @property
     def url(self):
-        return "42[\"getChunkData\", {{\"cx\": {0}, \"cy\": {1}}}]".format(self.x, self.y)
+        return "42[\"getChunk\", {{\"x\": {0}, \"y\": {1}}}]".format(self.x, self.y)
 
     @property
     def width(self):
@@ -178,10 +136,8 @@ class ChunkPz(Chunky):
         return 0 <= self.x < 16 and 0 <= self.y < 16
 
     def load(self, data):
-        tmp = LZString().decompressFromBase64(data)
-        tmp = json.loads("[" + tmp + "]")
-        tmp = lz4.frame.decompress(bytes(tmp))
-        self._image = Image.frombytes('P', (512, 512), tmp, 'raw', 'P;4')
+        data = zlib.decompress(data)
+        self._image = Image.frombytes('P', (512, 512), data, 'raw', 'P;4')
         self._image.putpalette(self.palette)
 
     @staticmethod

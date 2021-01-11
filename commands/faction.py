@@ -1,3 +1,4 @@
+import logging
 import io
 import re
 
@@ -5,34 +6,31 @@ import discord
 from discord.ext import commands
 from PIL import Image
 
-from objects import errors
-from objects.logger import Log
-from objects.config import Config
+from objects.errors import BadArgumentErrorWithMessage, NoSelfPermissionError, UrlError
 from utils import canvases, checks, sqlite as sql
 
-log = Log(__name__)
-cfg = Config()
+log = logging.getLogger(__name__)
 
 
-class Faction:
+class Faction(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
     @checks.admin_only()
     @commands.command(name="assemble")
-    async def assemble(self, ctx, name, alias=None):
+    async def assemble(self, ctx, name, alias=""):
         if sql.guild_is_faction(ctx.guild.id):
             await ctx.send(ctx.s("faction.already_faction"))
             return
         name = re.sub("[^\S ]+", "", name)
         if not (6 <= len(name) <= 32):
-            raise errors.BadArgumentErrorWithMessage(ctx.s("faction.err.name_length"))
+            raise BadArgumentErrorWithMessage(ctx.s("faction.err.name_length"))
         if sql.guild_get_by_faction_name(name):
             await ctx.send(ctx.s("faction.name_already_exists"))
             return
         alias = re.sub("[^A-Za-z]+", "", alias).lower()
         if alias and not (1 <= len(alias) <= 5):
-            raise errors.BadArgumentErrorWithMessage(ctx.s("faction.err.alias_length"))
+            raise BadArgumentErrorWithMessage(ctx.s("faction.err.alias_length"))
         if sql.guild_get_by_faction_alias(alias):
             await ctx.send(ctx.s("faction.alias_already_exists"))
             return
@@ -75,7 +73,7 @@ class Faction:
     async def faction_alias_set(self, ctx, new_alias):
         new_alias = re.sub("[^A-Za-z]+", "", new_alias).lower()
         if not (1 <= len(new_alias) <= 5):
-            raise errors.BadArgumentErrorWithMessage(ctx.s("faction.err.alias_length"))
+            raise BadArgumentErrorWithMessage(ctx.s("faction.err.alias_length"))
         if sql.guild_get_by_faction_alias(new_alias):
             await ctx.send(ctx.s("faction.alias_already_exists"))
             return
@@ -94,7 +92,7 @@ class Faction:
                 img.save(bio, format="PNG")
                 bio.seek(0)
                 f = discord.File(bio, "color.png")
-                await ctx.send('0x' + format(color, 'X'), file=f)
+                await ctx.send('0x{0:06X}'.format(color), file=f)
 
     @faction_color.command(name="clear")
     async def faction_color_clear(self, ctx):
@@ -104,11 +102,10 @@ class Faction:
     @faction_color.command(name="set")
     async def faction_color_set(self, ctx, color: str):
         try:
-            color = int(color, 0)
+            color = abs(int(color, 16) % 0xFFFFFF)
         except ValueError:
             await ctx.send(ctx.s("error.invalid_color"))
             return
-        color = abs(color % 16777215)
         sql.guild_faction_set(ctx.guild.id, color=color)
         await ctx.send(ctx.s("faction.set_color"))
 
@@ -133,7 +130,7 @@ class Faction:
     async def faction_desc_set(self, ctx, *, description):
         description = re.sub("[^\S ]+", "", description)
         if not (len(description) <= 240):
-            raise errors.BadArgumentErrorWithMessage(ctx.s("faction.err.description_length"))
+            raise BadArgumentErrorWithMessage(ctx.s("faction.err.description_length"))
         sql.guild_faction_set(ctx.guild.id, desc=description)
         await ctx.send(ctx.s("faction.set_description"))
 
@@ -158,7 +155,7 @@ class Faction:
     async def faction_emblem_set(self, ctx, emblem_url=None):
         if emblem_url:
             if not re.search('^(?:https?://)cdn\.discordapp\.com/', emblem_url):
-                raise errors.UrlError
+                raise UrlError
         elif len(ctx.message.attachments) > 0:
             emblem_url = ctx.message.attachments[0].url
 
@@ -200,7 +197,7 @@ class Faction:
                 url = "https://discord.gg/" + url
         else:
             if not ctx.channel.permissions_for(ctx.guild.me).create_instant_invite:
-                raise errors.NoSelfPermissionError
+                raise NoSelfPermissionError
             invite = await ctx.channel.create_invite(reason="Invite for faction info page")
             url = invite.url
         sql.guild_faction_set(ctx.guild.id, invite=url)
@@ -218,7 +215,7 @@ class Faction:
     async def faction_name_set(self, ctx, new_name):
         new_name = re.sub("[^\S ]+", "", new_name)
         if not (6 <= len(new_name) <= 32):
-            raise errors.BadArgumentErrorWithMessage(ctx.s("faction.err.name_length"))
+            raise BadArgumentErrorWithMessage(ctx.s("faction.err.name_length"))
         if sql.guild_get_by_faction_name(new_name):
             await ctx.send(ctx.s("faction.name_already_exists"))
             return
@@ -278,9 +275,11 @@ class Faction:
         for c in canvas_list:
             canvases_pretty.append(canvases.pretty_print[c])
         canvases_pretty.sort()
+        canvas_list = '\n'.join(canvases_pretty)
 
-        e = discord.Embed(color=g.faction_color) \
-            .add_field(name=ctx.s("bot.canvases"), value='\n'.join(canvases_pretty))
+        e = discord.Embed(color=g.faction_color)
+        if canvas_list:
+            e.add_field(name=ctx.s("bot.canvases"), value='\n'.join(canvases_pretty))
         if g.faction_invite:
             icon_url = self.bot.get_guild(g.id).icon_url
             e.set_author(name=g.faction_name, url=g.faction_invite, icon_url=icon_url)
@@ -288,7 +287,7 @@ class Faction:
             e.set_author(name=g.faction_name)
         e.description = g.faction_desc if g.faction_desc else ""
         if g.faction_alias:
-            e.description += "\n**{}:** {}".format(ctx.s("bot.alias"), g.faction_alias)
+            e.description = "**{}:** {}\n".format(ctx.s("bot.alias"), g.faction_alias) + e.description
         if g.faction_emblem:
             e.set_thumbnail(url=g.faction_emblem)
 
@@ -319,7 +318,3 @@ class Faction:
             return
         sql.faction_hides_remove(ctx.guild.id, other_fac.id)
         await ctx.send(ctx.s("faction.clear_hide").format(other_fac.faction_name))
-
-
-def setup(bot):
-    bot.add_cog(Faction(bot))

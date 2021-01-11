@@ -3,16 +3,14 @@ import sqlite3
 import time
 from typing import List, Optional
 
-from objects.config import Config
-from objects.dbguild import DbGuild
-from objects.dbtemplate import DbTemplate
+from objects import DbGuild, DbTemplate
+from utils import config
 
 if not os.path.exists('data'):
     os.makedirs('data')
 conn = sqlite3.connect('data/glimmer.db')
 conn.row_factory = sqlite3.Row
 c = conn.cursor()
-cfg = Config()
 
 
 def _create_tables():
@@ -193,6 +191,27 @@ def _update_tables(v):
                 COMMIT;
                 PRAGMA FOREIGN_KEYS = ON; 
             """)
+        if v < 1.7:
+            c.executescript("""
+                BEGIN TRANSACTION;
+                UPDATE guilds SET canvas="pixelcanvas" WHERE canvas="pixelzio";
+                DELETE FROM templates WHERE canvas="pixelzio";
+                COMMIT;
+            """)
+        if v < 1.9:
+            c.executescript("""
+                BEGIN TRANSACTION;
+                UPDATE guilds SET canvas='pixelplanet' WHERE canvas='pixelplace';
+                UPDATE templates SET canvas='pixelplanet' WHERE canvas='pixelplace';
+                COMMIT;
+            """)
+        if v < 1.10:
+            c.executescript("""
+                BEGIN TRANSACTION;
+                UPDATE guilds SET canvas='pixelcanvas' WHERE canvas='pixelplanet';
+                UPDATE guilds SET canvas='pixelcanvas' WHERE canvas='pixelplanet';
+                COMMIT;
+            """)
 
 
 # ================================
@@ -283,7 +302,7 @@ def guild_faction_set(gid, name=None, alias=None, desc=None, color=None, emblem=
         c.execute('UPDATE guilds SET faction_alias=? WHERE id=?', (alias, gid))
     if desc:
         c.execute('UPDATE guilds SET faction_desc=? WHERE id=?', (desc, gid))
-    if color:
+    if color is not None:
         c.execute('UPDATE guilds SET faction_color=? WHERE id=?', (color, gid))
     if emblem:
         c.execute('UPDATE guilds SET faction_emblem=? WHERE id=?', (emblem, gid))
@@ -339,7 +358,7 @@ def guild_get_language_by_id(gid) -> str:
 
 def guild_get_prefix_by_id(gid) -> Optional[str]:
     g = guild_get_by_id(gid)
-    return g.prefix if g and g.prefix else cfg.prefix
+    return g.prefix if g and g.prefix else config.PREFIX
 
 
 def guild_is_autoscan(gid) -> bool:
